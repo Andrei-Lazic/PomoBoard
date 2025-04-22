@@ -1,33 +1,66 @@
-CC = gcc
-CPPFLAGS = -I.
-CFLAGS = -Wall -std=c99 -extra -pedantic -g
+#Andrei
+#Cross Compilation Makefile
 
+#system
+UNAME_S = $(shell uname -s)
+
+#directories for compiling
 BUILD_DIR = build/$(shell uname -s)-$(shell uname -m)
-BIN_DIR = bin/$(shell uname -s)-$(shell uname -m)
 LIB_DIR = lib/$(shell uname -s)-$(shell uname -m)
+BIN_DIR = bin/$(shell uname -s)-$(shell uname -m)
 
-LDFLAGS = -L./$(LIB_DIR)
+SRC = pomodoro.c pomoWindow.c pomoTimer.c
+OBJ = $(SRC:%.c=$(BUILD_DIR)/%.o)
+TARGET_NAME = pomodoro
 
-.PHONY: all clean
+#linux
+ifeq ($(UNAME_S), Linux)
+	CC = gcc
+	CPPFLAGS = -I.
+	CFLAGS = -Wall -extra -Werror -pedantic -std=c99
+	LIBS = -lSDL2 -lSDL2_ttf
+	#ext for linux exec is nothing
+	EXT =  
 
-all: pomoExec
+#apple / mac
+else ifeq ($(UNAME_S), Darwin) 
+	CC = clang
+	CPPFLAGS = -I.
+	CFLAGS = -Wall -extra -Werror -pedantic -std=c99
+	LIBS = -L/usr/local/lib -lSDL2 -lSDL2_ttf
+	#ext for mac exec is nothing aswell (unix based i think)
+	EXT = 
 
+#windows 
+else 
+	CC = x86_64-w64-mingw32-gcc
+	CPPFLAGS = -I.
+	CFLAGS = -Wall -Wextra -Werror -pedantic -std=c99
+	LIBS = -L/usr/x86_64-w64-mingw32/lib -lmingw32 -lSDL2main -lSDL2 -lSDL2_ttf
+	#ext for windows exec is .exe 
+	EXT = .exe 
+endif
 
-clean:
-	rm -rf pomoExec $(BUILD_DIR) $(LIB_DIR) $(BIN_DIR) ./lib ./bin ./build
+TARGET = $(BIN_DIR)/$(TARGET_NAME)$(EXT)
 
-$(BUILD_DIR) $(BIN_DIR) $(LIB_DIR): 
-	mkdir -p $(BUILD_DIR) $(LIB_DIR) $(BIN_DIR)
+.PHONY: all clean buildDirs
 
-$(BUILD_DIR)/pomoMain.o: pomoMain.c | $(BUILD_DIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -fPIC -c pomoMain.c -o $(BUILD_DIR)/pomoMain.o
+all: buildDirs $(TARGET)
 
-$(BIN_DIR)/pomoExec: pomoMain.o | $(BIN_DIR)
-	$(CC) $(CFLAGS) pomoMain.o -o pomoExec
+clean: 
+	rm -rf $(LIB_DIR) $(BUILD_DIR) $(BIN_DIR) $(TARGET) lib/ bin/ build/
 
+#build the directories
+buildDirs: $(BUILD_DIR) $(LIB_DIR) $(BIN_DIR) 
 
+$(BUILD_DIR) $(LIB_DIR) $(BIN_DIR):
+	mkdir -p $(@)
 
-#put in the pomoExec build rules...
-#pomoTimer should be its own thing i think
-#make cross compilation build rules and shit
+#c to obj 
+$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+#link obj to exec
+$(TARGET): $(OBJ)
+	$(CC) $(OBJ) -o $@ $(LIBS) 
 
